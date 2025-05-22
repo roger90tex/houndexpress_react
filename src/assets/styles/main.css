@@ -96,7 +96,6 @@ body {
   text-decoration: none;
   font-size: 1.1rem;
   font-weight: 500;
-  padding: 0.5rem 1rem;
   border-radius: 20px;
   transition: all 0.3s ease;
 }
@@ -161,6 +160,7 @@ body {
   background-color: #ffffff;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: auto;
 }
 .section__title {
   font-size: 1.8rem;
