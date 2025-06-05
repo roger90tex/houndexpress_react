@@ -98,6 +98,7 @@ interface GuideFormProps {
                         <option value="pendiente">Pendiente</option>
                         <option value="cancelado">Cancelado</option>
                     </select>
+                    {error && <p className="form__error" role="alert">{error}</p>}
                     <button type="submit" className="form__button">Registrar Guía</button>
             </form>
         </section>
