@@ -14,7 +14,6 @@ const App: React.FC = () => {
   const [selectedGuide, setSelectedGuide] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Definir transiciones permitidas de estados con tipo explícito
   const flujoEstados: { [key in Guide['estado']]: Guide['estado'][] } = {
     pendiente: ['en_transito', 'cancelado'],
     en_transito: ['entregado', 'cancelado'],
@@ -22,7 +21,6 @@ const App: React.FC = () => {
     cancelado: [],
   };
 
-  // Función para obtener etiquetas de estado legibles
   const obtenerEtiquetaEstado = (estado: string) => {
     const etiquetas: { [key: string]: string } = {
       pendiente: 'Pendiente',
@@ -33,7 +31,6 @@ const App: React.FC = () => {
     return etiquetas[estado] || estado;
   };
 
-  // Agregar una nueva guía
   const handleAddGuide = (guide: Guide) => {
     if (guides.some((g) => g.numeroGuia === guide.numeroGuia)) {
       setError('El número de guía ya existe.');
@@ -48,7 +45,6 @@ const App: React.FC = () => {
     });
   };
 
-  // Actualizar el estado de una guía
   const handleUpdateStatus = (numeroGuia: string) => {
     const guide = guides.find((g) => g.numeroGuia === numeroGuia);
     if (!guide) return;
@@ -77,24 +73,20 @@ const App: React.FC = () => {
     });
   };
 
-  // Mostrar historial de una guía
   const handleViewHistory = (numeroGuia: string) => {
     setSelectedGuide(numeroGuia);
     setModalOpen(true);
   };
 
-  // Cerrar el modal
   const handleCloseModal = () => {
     setModalOpen(false);
     setSelectedGuide(null);
   };
 
-  // Calcular contadores para el panel de estado
   const activeCount = guides.filter((g) => g.estado === 'pendiente' || g.estado === 'en_transito').length;
   const deliveredCount = guides.filter((g) => g.estado === 'entregado').length;
   const pendingCount = guides.filter((g) => g.estado === 'pendiente').length;
 
-  // Log para depuración
   useEffect(() => {
     console.log('El estado de guías ha cambiado:', guides);
   }, [guides]);
@@ -102,31 +94,65 @@ const App: React.FC = () => {
   return (
     <div>
       <Header />
-      <GuideForm onAddGuide={handleAddGuide} />
-      {error && <div style={{ color: 'red', textAlign: 'center', margin: '1rem' }}>{error}</div>}
-      <StatusPanel
-        activeCount={activeCount}
-        deliveredCount={deliveredCount}
-        pendingCount={pendingCount}
-      />
-      <GuideList
-        guides={guides}
-        onUpdateStatus={handleUpdateStatus}
-        onViewHistory={handleViewHistory}
-        obtenerEtiquetaEstado={obtenerEtiquetaEstado}
-      />
-      <Modal
-        isOpen={modalOpen}
-        history={
-          selectedGuide
-            ? (historialGuias[selectedGuide] || []).map((entry) => ({
-                ...entry,
-                estado: obtenerEtiquetaEstado(entry.estado),
-              }))
-            : []
-        }
-        onClose={handleCloseModal}
-      />
+
+      {/* MAIN para semántica / SEO */}
+      <main id="contenido" tabIndex={-1}>
+        {/* H1 oculto visualmente (si tu diseño no quiere título grande) */}
+        <h1 className="sr-only">Hound Express - Gestión y rastreo de guías</h1>
+
+        {/* Sección: Registro */}
+        <section id="registro" aria-labelledby="titulo-registro">
+          <h2 id="titulo-registro" className="sr-only">Registro de guías</h2>
+          <GuideForm onAddGuide={handleAddGuide} />
+        </section>
+
+        {/* Errores accesibles */}
+        {error && (
+          <div role="alert" aria-live="polite" style={{ color: 'red', textAlign: 'center', margin: '1rem' }}>
+            {error}
+          </div>
+        )}
+
+        {/* Sección: Estado */}
+        <section id="estado" aria-labelledby="titulo-estado">
+          <h2 id="titulo-estado" className="sr-only">Estado general</h2>
+          <StatusPanel
+            activeCount={activeCount}
+            deliveredCount={deliveredCount}
+            pendingCount={pendingCount}
+          />
+        </section>
+
+        {/* Sección: Lista / Buscar / Historial (misma vista, pero con anclas útiles) */}
+        <section id="lista" aria-labelledby="titulo-lista">
+          <h2 id="titulo-lista" className="sr-only">Lista de guías</h2>
+
+          {/* Puedes dejar estos anchors como “targets” para el menú */}
+          <div id="buscar" />
+          <div id="historial" />
+
+          <GuideList
+            guides={guides}
+            onUpdateStatus={handleUpdateStatus}
+            onViewHistory={handleViewHistory}
+            obtenerEtiquetaEstado={obtenerEtiquetaEstado}
+          />
+        </section>
+
+        <Modal
+          isOpen={modalOpen}
+          history={
+            selectedGuide
+              ? (historialGuias[selectedGuide] || []).map((entry) => ({
+                  ...entry,
+                  estado: obtenerEtiquetaEstado(entry.estado),
+                }))
+              : []
+          }
+          onClose={handleCloseModal}
+        />
+      </main>
+
       <Footer />
     </div>
   );
