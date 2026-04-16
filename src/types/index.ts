@@ -1,4 +1,5 @@
 export interface Guide {
+    id?: number;
     numeroGuia: string;
     origen: string;
     destino: string;

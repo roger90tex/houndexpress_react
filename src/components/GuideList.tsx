@@ -5,6 +5,7 @@ interface GuideListProps {
   guides: Guide[];
   onUpdateStatus: (numeroGuia: string) => void;
   onViewHistory: (numeroGuia: string) => void;
+  onDeleteGuide: (numeroGuia: string) => void;
   obtenerEtiquetaEstado: (estado: string) => string;
 }
 
@@ -12,6 +13,7 @@ const GuideList: React.FC<GuideListProps> = ({
   guides,
   onUpdateStatus,
   onViewHistory,
+  onDeleteGuide,
   obtenerEtiquetaEstado,
 }) => {
   return (
@@ -70,6 +72,13 @@ const GuideList: React.FC<GuideListProps> = ({
                     aria-label={`Ver historial de la guía ${guide.numeroGuia}`}
                   >
                     Ver Historial
+                  </button>
+                  <button
+                    type="button"
+                    className="table__button"
+                    onClick={() => onDeleteGuide(guide.numeroGuia)}
+                  >
+                    Eliminar
                   </button>
                 </td>
               </tr>
