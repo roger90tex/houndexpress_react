@@ -37,7 +37,29 @@ Hound Express es una aplicación que permite gestionar envíos de manera sencill
 ```bash
 pip install -r requirements.txt
 python manage.py runserver
+Servidor en:
+http://127.0.0.1:8000/
+---
 
+### Frontend (React)
+
+```bash
+npm install
+npm start
+
+
+---
+
+## 🔗 Y finalmente la conexión (esto es CLAVE)
+
+```md
+---
+
+## 🔗 Comunicación
+
+El frontend consume la API en:
+
+http://127.0.0.1:8000/api/shipments/
 You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
 
 ## Learn More
