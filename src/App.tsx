@@ -5,30 +5,34 @@ import StatusPanel from './components/StatusPanel';
 import GuideList from './components/GuideList';
 import Modal from './components/Modal';
 import Footer from './components/Footer';
+import shipmentsApi from './api/shipmentsApi';
 import { Guide, HistoryEntry } from './types';
 
 const App: React.FC = () => {
+
   const mapEstadoBackend = (status: string): Guide["estado"] => {
-  const mapa: any = {
-    pendiente: "pendiente",
-    en_transito: "en_transito",
-    entregado: "entregado",
-    cancelado: "cancelado",
+    const mapa: any = {
+      pendiente: "pendiente",
+      en_transito: "en_transito",
+      entregado: "entregado",
+      cancelado: "cancelado",
+    };
+
+    return mapa[status] || "pendiente";
   };
 
-  return mapa[status] || "pendiente";
-};
+  const mapEstadoFrontendToBackend = (status: string): string => {
+    const mapa: any = {
+      "Pendiente": "pendiente",
+      "En tránsito": "en_transito",
+      "Entregado": "entregado",
+      "Cancelado": "cancelado",
+    };
 
-const mapEstadoFrontendToBackend = (status: string): string => {
-  const mapa: any = {
-    "Pendiente": "pendiente",
-    "En tránsito": "en_transito",
-    "Entregado": "entregado",
-    "Cancelado": "cancelado",
+    return mapa[status] || status.toLowerCase();
   };
 
-  return mapa[status] || status.toLowerCase();
-};
+  const [loading, setLoading] = useState(false);
   const [guides, setGuides] = useState<Guide[]>([]);
   const [historialGuias, setHistorialGuias] = useState<{ [key: string]: HistoryEntry[] }>({});
   const [modalOpen, setModalOpen] = useState(false);
@@ -49,166 +53,178 @@ const mapEstadoFrontendToBackend = (status: string): string => {
       entregado: 'Entregado',
       cancelado: 'Cancelado',
     };
+
     return etiquetas[estado] || estado;
   };
 
- const handleAddGuide = async (guide: Guide) => {
-  if (guides.some((g) => g.numeroGuia === guide.numeroGuia)) {
-    setError("El número de guía ya existe.");
-    setTimeout(() => setError(null), 3000);
-    return;
-  }
+  // =========================
+  // CREATE
+  // =========================
+  const handleAddGuide = async (guide: Guide) => {
 
-  try {
-    const response = await fetch("http://127.0.0.1:8000/api/shipments/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    if (guides.some((g) => g.numeroGuia === guide.numeroGuia)) {
+      setError("El número de guía ya existe.");
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    try {
+
+      const response = await shipmentsApi.post("/shipments/", {
         tracking_number: guide.numeroGuia,
         customer_name: guide.destinatario,
         origin: guide.origen,
         destination: guide.destino,
         status: mapEstadoFrontendToBackend(guide.estado),
         description: "Envío registrado desde React",
-      }),
-    });
+      });
 
-    if (!response.ok) {
-      throw new Error("No se pudo crear el envío en Django");
+      const newShipment = response.data;
+
+      const nuevaGuiaMapeada: Guide = {
+        id: newShipment.id,
+        numeroGuia: newShipment.tracking_number,
+        origen: newShipment.origin,
+        destino: newShipment.destination,
+        destinatario: newShipment.customer_name,
+        telefono: "N/A",
+        fechaCreacion: new Date(newShipment.created_at).toLocaleString(),
+        estado: mapEstadoBackend(newShipment.status),
+      };
+
+      setGuides([...guides, nuevaGuiaMapeada]);
+
+      setHistorialGuias({
+        ...historialGuias,
+        [nuevaGuiaMapeada.numeroGuia]: [
+          {
+            estado: nuevaGuiaMapeada.estado,
+            fecha: new Date().toLocaleString(),
+          },
+        ],
+      });
+
+    } catch (error) {
+      console.error("Error al crear guía:", error);
+
+      setError("Hubo un problema al guardar la guía en el backend.");
+
+      setTimeout(() => setError(null), 3000);
     }
+  };
 
-    const newShipment = await response.json();
-
-    const nuevaGuiaMapeada: Guide = {
-      id: newShipment.id,
-      numeroGuia: newShipment.tracking_number,
-      origen: newShipment.origin,
-      destino: newShipment.destination,
-      destinatario: newShipment.customer_name,
-      telefono: "N/A",
-      fechaCreacion: new Date(newShipment.created_at).toLocaleString(),
-      estado: mapEstadoBackend(newShipment.status),
-    };
-
-    setGuides([...guides, nuevaGuiaMapeada]);
-
-    setHistorialGuias({
-      ...historialGuias,
-      [nuevaGuiaMapeada.numeroGuia]: [
-        {
-          estado: nuevaGuiaMapeada.estado,
-          fecha: new Date().toLocaleString(),
-        },
-      ],
-    });
-  } catch (error) {
-    console.error("Error al crear guía:", error);
-    setError("Hubo un problema al guardar la guía en el backend.");
-    setTimeout(() => setError(null), 3000);
-  }
-};
-
+  // =========================
+  // UPDATE STATUS
+  // =========================
   const handleUpdateStatus = async (numeroGuia: string) => {
-  const guide = guides.find((g) => g.numeroGuia === numeroGuia);
 
-  if (!guide?.id) {
-  setError("La guía no tiene id del backend.");
-  setTimeout(() => setError(null), 3000);
-  return;
-  }
+    const guide = guides.find((g) => g.numeroGuia === numeroGuia);
 
-  const estadoActual = guide.estado;
-  const estadosSiguientes = flujoEstados[estadoActual] || [];
-
-  if (estadosSiguientes.length === 0) {
-    setError("No se puede actualizar el estado de esta guía.");
-    setTimeout(() => setError(null), 3000);
-    return;
-  }
-
-  const nuevoEstado = estadosSiguientes[0];
-
-  try {
-    const response = await fetch(`http://127.0.0.1:8000/api/shipments/${guide.id}/`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        status: nuevoEstado,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error("No se pudo actualizar el estado en Django");
+    if (!guide?.id) {
+      setError("La guía no tiene id del backend.");
+      setTimeout(() => setError(null), 3000);
+      return;
     }
 
-    const updatedShipment = await response.json();
+    const estadoActual = guide.estado;
+    const estadosSiguientes = flujoEstados[estadoActual] || [];
 
-    const updatedGuides = guides.map((g) =>
-      g.numeroGuia === numeroGuia
-        ? {
-            ...g,
+    if (estadosSiguientes.length === 0) {
+      setError("No se puede actualizar el estado de esta guía.");
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    const nuevoEstado = estadosSiguientes[0];
+
+    try {
+
+      const response = await shipmentsApi.patch(`/shipments/${guide.id}/`, {
+        status: nuevoEstado,
+      });
+
+      const updatedShipment = response.data;
+
+      const updatedGuides = guides.map((g) =>
+        g.numeroGuia === numeroGuia
+          ? {
+              ...g,
+              estado: mapEstadoBackend(updatedShipment.status),
+            }
+          : g
+      );
+
+      setGuides(updatedGuides);
+
+      setHistorialGuias({
+        ...historialGuias,
+        [numeroGuia]: [
+          ...(historialGuias[numeroGuia] || []),
+          {
             estado: mapEstadoBackend(updatedShipment.status),
-          }
-        : g
+            fecha: new Date().toLocaleString(),
+          },
+        ],
+      });
+
+    } catch (error) {
+
+      console.error("Error al actualizar estado:", error);
+
+      setError("Hubo un problema al actualizar el estado en el backend.");
+
+      setTimeout(() => setError(null), 3000);
+    }
+  };
+
+  // =========================
+  // DELETE
+  // =========================
+  const handleDeleteGuide = async (numeroGuia: string) => {
+
+    const guide = guides.find((g) => g.numeroGuia === numeroGuia);
+
+    if (!guide?.id) {
+      setError("La guía no tiene id del backend.");
+      setTimeout(() => setError(null), 3000);
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      "¿Seguro que quieres eliminar esta guía?"
     );
 
-    setGuides(updatedGuides);
+    if (!confirmDelete) return;
 
-    setHistorialGuias({
-      ...historialGuias,
-      [numeroGuia]: [
-        ...(historialGuias[numeroGuia] || []),
-        {
-          estado: mapEstadoBackend(updatedShipment.status),
-          fecha: new Date().toLocaleString(),
-        },
-      ],
-    });
-  } catch (error) {
-    console.error("Error al actualizar estado:", error);
-    setError("Hubo un problema al actualizar el estado en el backend.");
-    setTimeout(() => setError(null), 3000);
-  }
-};
-const handleDeleteGuide = async (numeroGuia: string) => {
-  const guide = guides.find((g) => g.numeroGuia === numeroGuia);
+    try {
 
-  if (!guide?.id) {
-    setError("La guía no tiene id del backend.");
-    setTimeout(() => setError(null), 3000);
-    return;
-  }
+      await shipmentsApi.delete(`/shipments/${guide.id}/`);
 
-  const confirmDelete = window.confirm("¿Seguro que quieres eliminar esta guía?");
-  if (!confirmDelete) return;
+      const updatedGuides = guides.filter(
+        (g) => g.numeroGuia !== numeroGuia
+      );
 
-  try {
-    const response = await fetch(`http://127.0.0.1:8000/api/shipments/${guide.id}/`, {
-      method: "DELETE",
-    });
+      setGuides(updatedGuides);
 
-    if (!response.ok) {
-      throw new Error("No se pudo eliminar la guía en Django");
+      const nuevoHistorial = { ...historialGuias };
+
+      delete nuevoHistorial[numeroGuia];
+
+      setHistorialGuias(nuevoHistorial);
+
+    } catch (error) {
+
+      console.error("Error al eliminar guía:", error);
+
+      setError("Hubo un problema al eliminar la guía en el backend.");
+
+      setTimeout(() => setError(null), 3000);
     }
+  };
 
-    const updatedGuides = guides.filter((g) => g.numeroGuia !== numeroGuia);
-    setGuides(updatedGuides);
-
-    const nuevoHistorial = { ...historialGuias };
-    delete nuevoHistorial[numeroGuia];
-    setHistorialGuias(nuevoHistorial);
-  } catch (error) {
-    console.error("Error al eliminar guía:", error);
-    setError("Hubo un problema al eliminar la guía en el backend.");
-    setTimeout(() => setError(null), 3000);
-  }
-};
-
-
+  // =========================
+  // HISTORIAL
+  // =========================
   const handleViewHistory = (numeroGuia: string) => {
     setSelectedGuide(numeroGuia);
     setModalOpen(true);
@@ -219,21 +235,37 @@ const handleDeleteGuide = async (numeroGuia: string) => {
     setSelectedGuide(null);
   };
 
-  const activeCount = guides.filter((g) => g.estado === 'pendiente' || g.estado === 'en_transito').length;
-  const deliveredCount = guides.filter((g) => g.estado === 'entregado').length;
-  const pendingCount = guides.filter((g) => g.estado === 'pendiente').length;
+  // =========================
+  // CONTADORES
+  // =========================
+  const activeCount = guides.filter(
+    (g) => g.estado === 'pendiente' || g.estado === 'en_transito'
+  ).length;
 
+  const deliveredCount = guides.filter(
+    (g) => g.estado === 'entregado'
+  ).length;
 
+  const pendingCount = guides.filter(
+    (g) => g.estado === 'pendiente'
+  ).length;
+
+  // =========================
+  // GET
+  // =========================
   useEffect(() => {
-  fetch("http://127.0.0.1:8000/api/shipments/")
-    .then((res) => {
-      console.log("STATUS:", res.status);
-      return res.json();
-    })
-    .then((data) => {
-      console.log("DATA DEL BACKEND:", data);
+  setLoading(true);
 
-      const mappedData = data.map((item: any) => ({
+  shipmentsApi
+    .get("/shipments/")
+    .then((response) => {
+      console.log("DATA DEL BACKEND:", response.data);
+
+      const shipments = Array.isArray(response.data)
+        ? response.data
+        : response.data.results || [];
+
+      const mappedData = shipments.map((item: any) => ({
         id: item.id,
         numeroGuia: item.tracking_number,
         origen: item.origin,
@@ -248,46 +280,75 @@ const handleDeleteGuide = async (numeroGuia: string) => {
     })
     .catch((error) => {
       console.error("Error al obtener datos:", error);
+      setError("No se pudieron cargar las guías.");
+    })
+    .finally(() => {
+      setLoading(false);
     });
 }, []);
 
+  if (loading) {
+  return <h2 style={{ textAlign: "center" }}>Cargando guías...</h2>;
+  }
   return (
     <div>
+
       <Header />
 
-      {/* MAIN para semántica / SEO */}
       <main id="contenido" tabIndex={-1}>
-        {/* H1 oculto visualmente (si tu diseño no quiere título grande) */}
-        <h1 className="sr-only">Hound Express - Gestión y rastreo de guías</h1>
 
-        {/* Sección: Registro */}
+        <h1 className="sr-only">
+          Hound Express - Gestión y rastreo de guías
+        </h1>
+
+        {/* REGISTRO */}
         <section id="registro" aria-labelledby="titulo-registro">
-          <h2 id="titulo-registro" className="sr-only">Registro de guías</h2>
+
+          <h2 id="titulo-registro" className="sr-only">
+            Registro de guías
+          </h2>
+
           <GuideForm onAddGuide={handleAddGuide} />
+
         </section>
 
-        {/* Errores accesibles */}
+        {/* ERRORES */}
         {error && (
-          <div role="alert" aria-live="polite" style={{ color: 'red', textAlign: 'center', margin: '1rem' }}>
+          <div
+            role="alert"
+            aria-live="polite"
+            style={{
+              color: 'red',
+              textAlign: 'center',
+              margin: '1rem'
+            }}
+          >
             {error}
           </div>
         )}
 
-        {/* Sección: Estado */}
+        {/* PANEL */}
         <section id="estado" aria-labelledby="titulo-estado">
-          <h2 id="titulo-estado" className="sr-only">Estado general</h2>
+
+          <h2 id="titulo-estado" className="sr-only">
+            Estado general
+          </h2>
+
           <StatusPanel
             activeCount={activeCount}
             deliveredCount={deliveredCount}
             pendingCount={pendingCount}
           />
+
         </section>
 
-        {/* Sección: Lista / Buscar / Historial (misma vista, pero con anclas útiles) */}
+        {/* LISTA */}
         <section id="lista" aria-labelledby="titulo-lista">
-          <h2 id="titulo-lista" className="sr-only">Lista de guías</h2>
 
-          {/* Puedes dejar estos anchors como “targets” para el menú */}
+          <h2 id="titulo-lista" className="sr-only">
+            Lista de guías
+          </h2>
+
           <div id="buscar" />
           <div id="historial" />
 
@@ -298,8 +359,10 @@ const handleDeleteGuide = async (numeroGuia: string) => {
             onDeleteGuide={handleDeleteGuide}
             obtenerEtiquetaEstado={obtenerEtiquetaEstado}
           />
+
         </section>
 
+        {/* MODAL */}
         <Modal
           isOpen={modalOpen}
           history={
@@ -312,9 +375,11 @@ const handleDeleteGuide = async (numeroGuia: string) => {
           }
           onClose={handleCloseModal}
         />
+
       </main>
 
       <Footer />
+
     </div>
   );
 };
