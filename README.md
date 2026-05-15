@@ -1,21 +1,21 @@
-# Hound Express 🚚
+# Hound Express
 
-Sistema de gestión de envíos desarrollado con arquitectura fullstack utilizando React y Django REST Framework.
+Sistema de gestión de envíos desarrollado con React + TypeScript y conectado a una API REST construida con Django REST Framework.
 
-## 🧠 Descripción
+---
 
-Hound Express es una aplicación que permite gestionar envíos de manera sencilla, incluyendo:
+## Descripción
 
-- Registro de guías
-- Consulta de envíos
-- Actualización de estados
-- Eliminación de registros
+Hound Express es una aplicación fullstack orientada a la gestión de guías y envíos. El frontend permite consultar, registrar, actualizar y eliminar envíos consumiendo datos desde un backend desarrollado en Django.
 
-## ⚙️ Tecnologías utilizadas
+---
+
+## Tecnologías
 
 ### Frontend
 - React
 - TypeScript
+- CSS
 - Fetch API
 
 ### Backend
@@ -23,47 +23,21 @@ Hound Express es una aplicación que permite gestionar envíos de manera sencill
 - Django REST Framework
 - SQLite
 
-## 🔌 Funcionalidades principales
-
-- Crear envíos (POST)
-- Obtener envíos (GET)
-- Actualizar estado (PATCH)
-- Eliminar envíos (DELETE)
-
-## 🚀 Cómo ejecutar el proyecto
-
-### Backend (Django)
-
-```bash
-pip install -r requirements.txt
-python manage.py runserver
-Servidor en:
-http://127.0.0.1:8000/
 ---
 
-### Frontend (React)
+## Funcionalidades
 
-```bash
-npm install
-npm start
-
+- Consulta de envíos registrados
+- Registro de nuevas guías
+- Actualización del estado de un envío
+- Eliminación de registros
+- Comunicación con API REST
 
 ---
 
-## 🔗 Y finalmente la conexión (esto es CLAVE)
-
-```md
----
-
-## 🔗 Comunicación
+## API
 
 El frontend consume la API en:
 
+```txt
 http://127.0.0.1:8000/api/shipments/
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
